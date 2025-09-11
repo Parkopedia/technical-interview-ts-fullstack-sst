@@ -8,6 +8,18 @@ This is a [SST](https://sst.dev/) project bootstrapped with `create-sst`.
 - [AWS Account](https://aws.amazon.com/) (`technical-interviews` profile)
 - [Stripe Account](https://stripe.com/)
 
+## Configure
+
+```
+# AWS
+aws configure set region eu-central-1 --profile technical-interviews && \
+aws configure set aws_access_key_id "xxx" --profile technical-interviews && \
+aws configure set aws_secret_access_key "xxx" --profile technical-interviews
+
+# Stripe API key
+npx sst secrets set STRIPE_KEY sk_test_abc123
+```
+
 ## Quickstart
 
 ```bash
@@ -20,9 +32,6 @@ npm run dev
 ✔  Deployed:
    API
    ApiUrl: https://xxx.execute-api.eu-central-1.amazonaws.com
-
-# Set Stripe API key
-npx sst secrets set STRIPE_KEY sk_test_abc123
 
 # Request customer portal URL
 curl "https://xxx.execute-api.eu-central-1.amazonaws.com/drivers/1/get-customer-portal-url"
