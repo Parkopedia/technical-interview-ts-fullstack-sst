@@ -1,0 +1,9 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: parkopedia-technical-interview-ts-fullstack-sst
+  description: Parkopedia technical interview for TS/Full stack/SST
+spec:
+  type: service
+  lifecycle: production
+  owner: pse
