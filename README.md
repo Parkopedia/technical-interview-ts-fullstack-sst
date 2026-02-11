@@ -16,6 +16,9 @@ aws configure set region eu-central-1 --profile technical-interviews && \
 aws configure set aws_access_key_id "xxx" --profile technical-interviews && \
 aws configure set aws_secret_access_key "xxx" --profile technical-interviews
 
+# Install dependencies
+npm install
+
 # Stripe API key
 npx sst secrets set STRIPE_KEY sk_test_abc123
 ```
@@ -23,9 +26,6 @@ npx sst secrets set STRIPE_KEY sk_test_abc123
 ## Quickstart
 
 ```bash
-# Install dependencies
-npm install
-
 # Run development environment
 npm run dev
 
