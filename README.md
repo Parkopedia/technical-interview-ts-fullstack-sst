@@ -12,8 +12,8 @@ This is a [SST](https://sst.dev/) project bootstrapped with `create-sst`.
 
 ```
 # AWS
-aws configure set region eu-central-1 --profile technical-interviews && \
-aws configure set aws_access_key_id "xxx" --profile technical-interviews && \
+aws configure set region eu-central-1 --profile technical-interviews
+aws configure set aws_access_key_id "xxx" --profile technical-interviews
 aws configure set aws_secret_access_key "xxx" --profile technical-interviews
 
 # Install dependencies
