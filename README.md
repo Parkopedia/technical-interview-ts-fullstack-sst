@@ -20,7 +20,7 @@ aws configure set aws_secret_access_key "xxx" --profile technical-interviews
 npm install
 
 # Stripe API key
-npx sst secrets set STRIPE_KEY sk_test_abc123
+npx sst secret set STRIPE_KEY sk_test_abc123
 ```
 
 ## Quickstart

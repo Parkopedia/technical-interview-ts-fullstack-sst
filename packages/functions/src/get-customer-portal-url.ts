@@ -1,8 +1,8 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { Config } from "sst/node/config";
+import { Resource } from "sst";
 import Stripe from "stripe";
 
-const stripe = new Stripe(Config.STRIPE_KEY, {
+const stripe = new Stripe(Resource.STRIPE_KEY.value, {
   apiVersion: "2023-10-16",
 });
 
