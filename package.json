@@ -25,6 +25,7 @@
     "stripe": "^14.23.0"
   },
   "overrides": {
-    "hono": "4.12.25"
+    "hono": "4.12.25",
+    "@modelcontextprotocol/sdk": "1.29.0"
   }
 }
