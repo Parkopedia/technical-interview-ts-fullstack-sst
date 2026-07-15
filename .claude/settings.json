@@ -1,0 +1,8 @@
+{
+  "extraKnownMarketplaces": {
+    "claude-code-internal-plugins": {
+      "source": { "source": "github", "repo": "easyparkgroup/claude-code-marketplace" }
+    }
+  },
+  "enabledPlugins": { "security-audit@claude-code-internal-plugins": true }
+}
