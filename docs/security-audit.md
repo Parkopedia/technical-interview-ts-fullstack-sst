@@ -1,6 +1,6 @@
 # Security Audit — ts-fullstack-sst
 
-Generated: 2026-06-30
+Generated: 2026-10-07
 Agent: security-audit v2.0.0
 
 ## Project Profile
