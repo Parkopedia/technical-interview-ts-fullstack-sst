@@ -1,6 +1,6 @@
 # Security Audit — ts-fullstack-sst
 
-Generated: 2026-06-30
+Generated: 2026-10-07
 Agent: security-audit v2.0.0
 
 ## Project Profile
@@ -92,6 +92,25 @@ Agent: security-audit v2.0.0
 
 **Recommendation:** Regenerate `package-lock.json` after bumping `stripe` to clear the `qs` advisory; periodically upgrade SST/CDK to clear dev-tree highs; run `npm audit --omit=dev` in CI as a gate (no CI is present today).
 
+**Update 2026-10-07: Critical/High transitive CVE remediation (Risk Register #13).**
+- **Two lockfiles are committed**: `package-lock.json` (npm) and `pnpm-lock.yaml` (pnpm v9 lockfile, `pnpm-workspace.yaml`). pnpm does **not** read npm's `"overrides"` in `package.json`. Earlier npm-only overrides (`hono`, `@modelcontextprotocol/sdk`) therefore never reached `pnpm-lock.yaml`, and advisories in packages present in both lockfiles were reported twice.
+- Fixed 8 CVEs (10 alerts) in the dev/build tree. None ship in the Lambda bundle (the `stripe`-only runtime):
+
+| CVE | Advisory | Package | Severity | Was → Now | Path |
+|-----|----------|---------|----------|-----------|------|
+| CVE-2025-62610 | [GHSA-m732-5p4w-x69g](https://github.com/advisories/GHSA-m732-5p4w-x69g) | `hono` | High | 4.7.4 → 4.12.25 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2026-22817 | [GHSA-f67f-6cw9-8mq4](https://github.com/advisories/GHSA-f67f-6cw9-8mq4) | `hono` | High | 4.7.4 → 4.12.25 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2026-22818 | [GHSA-3vhc-576x-3qv4](https://github.com/advisories/GHSA-3vhc-576x-3qv4) | `hono` | High | 4.7.4 → 4.12.25 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2026-29045 | [GHSA-q5qw-h33p-qvwr](https://github.com/advisories/GHSA-q5qw-h33p-qvwr) | `hono` | High | 4.7.4 → 4.12.25 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2026-54290 | [GHSA-88fw-hqm2-52qc](https://github.com/advisories/GHSA-88fw-hqm2-52qc) | `hono` | High | 4.7.4 → 4.12.25 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2025-66414 | [GHSA-w48q-cv73-mx4w](https://github.com/advisories/GHSA-w48q-cv73-mx4w) | `@modelcontextprotocol/sdk` | High | 1.6.1 → 1.29.0 (pnpm) | `sst` → `opencontrol@0.0.6` |
+| CVE-2026-90711 | [GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h) | `proxy-addr` | Critical | 2.0.7 → 2.0.8 (both) | `opencontrol` → `@modelcontextprotocol/sdk` → `express@5.2.1` |
+| CVE-2026-93749 | [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) | `source-map-js` | High | 1.2.1 → 1.2.2 (both) | `vitest` → `vite` → `postcss` (test toolchain) |
+
+- **Method**: every `sst` 3.x release pins `opencontrol@0.0.6`, which pins `hono@4.7.4` and `@modelcontextprotocol/sdk@1.6.1`, and `express@5.2.1` (the latest) still allows `proxy-addr@2.0.7`. No fixed parent exists within the current major. The fix therefore uses CVE-commented `overrides:` in `pnpm-workspace.yaml`, mirroring the existing npm overrides. On the npm side, `proxy-addr` and `source-map-js` got an in-range lockfile update (`npm update`); no new npm overrides were needed. A compatibility pin `opencontrol>zod: 3.25.76` is also required, because `@modelcontextprotocol/sdk@1.29.0` imports `zod/v4` (peer `^3.25 || ^4.0`).
+- **Known limitation**: `opencontrol@0.0.6` wraps the SDK's request schemas in a zod-3 `z.union`. That is incompatible with every patched SDK (>= 1.24, zod-v4 schemas), so its MCP handler returns HTTP 500 (`option._parseSync is not a function`) under both lockfiles. The same was already true of the npm tree before this change. This app never imports `opencontrol` or uses `sst.aws.OpenControl`, so it has no functional impact.
+- **Audit after remediation**: `pnpm audit` went from 1 critical / 8 high / 36 moderate / 4 low to 0 critical / 1 high / 11 moderate / 2 low. `npm audit` went from 1 critical / 6 high / 10 moderate to 0 critical / 5 high / 10 moderate. The prod-only trees are `pnpm audit --prod` with no vulnerabilities and `npm audit --omit=dev` with 1 moderate (`qs`). The remaining advisories are tracked as Risk Register #14.
+
 ---
 
 ## Supply Chain Integrity
@@ -104,6 +123,7 @@ Static checks against the detected stack (npm only — `detect-stacks.sh` report
 | npm install scripts | `.npmrc` sets `ignore-scripts=true`? | **HIGH — absent.** No `.npmrc` exists, so dependency lifecycle scripts are permitted to run on `npm install`. Per Phase 5 npm rule this is flagged HIGH. *Recommend adding `.npmrc` with `ignore-scripts=true`.* |
 | npm lifecycle scripts | Project's own `package.json` lifecycle scripts | None (`scripts` are `dev/build/deploy/remove/console/typecheck/test` — no install hooks). Good. |
 | Lockfile integrity | `package-lock.json` committed with `integrity` | **OK** — committed, lockfileVersion 3, 211 `integrity` entries present. |
+| Lockfile integrity (pnpm) | `pnpm-lock.yaml` committed with `integrity` | **OK, with a caveat** (2026-10-07). `pnpm-lock.yaml` (lockfile v9) is also committed, alongside `package-lock.json`. Security overrides must be maintained in **both** places: `"overrides"` in `package.json` (npm) and `overrides:` in `pnpm-workspace.yaml` (pnpm, **requires pnpm >= 10**). Consider standardising on one package manager (see #14). |
 | Container images | `Dockerfile` present? | **N/A** — no Dockerfile / `.dockerignore`. |
 | Infrastructure as Code | `*.tf` present? | **N/A** — no Terraform; infra defined via SST/CDK in TypeScript. |
 | Build scripts & hooks | `curl|sh` / `wget|sh` in Makefile/`*.sh`; pre-commit `rev` pinning | **N/A** — no Makefile, no `*.sh`, no `.pre-commit-config.yaml`. |
@@ -174,8 +194,11 @@ Track the status of each finding using ROAM. New findings start as **Open** — 
 | 10 | Low | `return_url` hardcoded to `https://example.com/account` (`get-customer-portal-url.ts:27`) — placeholder, not a production destination (A02, low). | Open | — | — | — | — | — |
 | 11 | Medium | Root package (`.`) uses a `.npmignore` denylist to exclude the audit; a `"files"` allowlist in `package.json` is recommended (safer publish posture). Flagged by `protect-artifact.sh` (Phase 6). | Open | — | — | — | — | — |
 | 12 | Medium | `packages/functions` uses a `.npmignore` denylist to exclude the audit; a `"files"` allowlist in `package.json` is recommended. Flagged by `protect-artifact.sh` (Phase 6). | Open | — | — | — | — | — |
+| 13 | High | Critical/High CVEs in transitive dev/build deps `hono` (CVE-2025-62610, CVE-2026-22817, CVE-2026-22818, CVE-2026-29045, CVE-2026-54290), `@modelcontextprotocol/sdk` (CVE-2025-66414), `proxy-addr` (CVE-2026-90711, critical) and `source-map-js` (CVE-2026-93749), across `package-lock.json` and `pnpm-lock.yaml` (A06). | Resolved | — | — | 2026-10-07 | — | Fixed by `pnpm-workspace.yaml` overrides (`hono` 4.12.25, `@modelcontextprotocol/sdk` 1.29.0, `proxy-addr` 2.0.8, `source-map-js` 1.2.2, compat pin `opencontrol>zod` 3.25.76) plus an in-range `npm update` of `proxy-addr` and `source-map-js` in `package-lock.json`. No first-party use of hono JWT/JWK/CORS, `trust proxy` or MCP HTTP transports. `opencontrol@0.0.6` (unused) cannot handle MCP requests with any patched SDK. |
+| 14 | Medium | Remaining dev/build-tree advisories after #13: `@modelcontextprotocol/sdk` CVE-2026-104850 / GHSA-6qxp-vccf-f47h (high, needs >= 1.31.0); `hono` moderates/lows needing >= 4.12.27 / 4.12.34 / 4.13.5 / 4.13.7; `uuid`, `aws-sdk` (via `sst`); npm-only `fast-uri` 3.1.7 (GHSA-hrr3-gc8f-f4qj, needs 3.1.8), `ip-address`, `nanoid`, `brace-expansion`, `vitest`; dual npm/pnpm lockfiles that need duplicated overrides (A06/A08). | Open | — | — | — | — | Out of scope for the 2026-10-07 Critical/High remediation. Prod-only trees: pnpm has no advisories; npm has `qs` only (#8). |
 
 ## Revision History
 | Date | Trigger | Key Changes |
 |------|---------|-------------|
 | 2026-06-30 | Initial audit | Full security audit created (STRIDE, OWASP Top 10, dependency review via `npm audit`, supply chain integrity, build artifact protection). |
+| 2026-10-07 | Critical/High CVE alert remediation (manual update; the `/security-audit` skill was not available in this environment) | Dependency review: documented the dual npm/pnpm lockfiles and the remediation of 8 CVEs (hono ×5, `@modelcontextprotocol/sdk`, `proxy-addr`, `source-map-js`). Supply chain: added a `pnpm-lock.yaml` row (pnpm >= 10 needed for workspace overrides). Risk Register: added #13 (Resolved) and #14 (Open, remaining advisories). |
